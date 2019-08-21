@@ -22,6 +22,8 @@
 
 #pragma once
 
+typedef unsigned int dtStatus;
+
 #include "../Navigation/CrowdManager.h"
 #include "../Scene/Component.h"
 

@@ -693,8 +693,7 @@ dtStatus NavigationMesh::FindPath(PODVector<NavigationPathPoint>& dest, const Ve
     int numPolys = 0;
     int numPathPoints = 0;
 
-    dtStatus result = navMeshQuery_->findPath(startRef, endRef, &localStart.x_, &localEnd.x_, queryFilter, pathData_->polys_, &numPolys,
-        MAX_POLYS);
+    dtStatus result = navMeshQuery_->findPath(startRef, endRef, &localStart.x_, &localEnd.x_, queryFilter, pathData_->polys_, &numPolys, MAX_POLYS);
     if (!numPolys)
         return DT_FAILURE;
 

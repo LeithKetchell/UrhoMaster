@@ -387,12 +387,12 @@ void CrowdManager::SetObstacleAvoidanceParams(unsigned obstacleAvoidanceType, co
     }
 }
 
-Vector3 CrowdManager::FindNearestPoint(const Vector3& point, int queryFilterType, dtPolyRef* nearestRef)
+Vector3 CrowdManager::FindNearestPoint(const Vector3& point, int queryFilterType, dtPolyRef* nearestRef, dtStatus* status)
 {
     if (nearestRef)
         *nearestRef = 0;
     return crowd_ && navigationMesh_ ?
-        navigationMesh_->FindNearestPoint(point, Vector3(crowd_->getQueryExtents()), crowd_->getFilter(queryFilterType), nearestRef) : point;
+        navigationMesh_->FindNearestPoint(point, Vector3(crowd_->getQueryExtents()), crowd_->getFilter(queryFilterType), nearestRef, status) : point;
 }
 
 Vector3 CrowdManager::MoveAlongSurface(const Vector3& start, const Vector3& end, int queryFilterType, int maxVisited)
@@ -402,10 +402,10 @@ Vector3 CrowdManager::MoveAlongSurface(const Vector3& start, const Vector3& end,
         end;
 }
 
-void CrowdManager::FindPath(PODVector<Vector3>& dest, const Vector3& start, const Vector3& end, int queryFilterType)
+dtStatus CrowdManager::FindPath(PODVector<Vector3>& dest, const Vector3& start, const Vector3& end, int queryFilterType)
 {
     if (crowd_ && navigationMesh_)
-        navigationMesh_->FindPath(dest, start, end, Vector3(crowd_->getQueryExtents()), crowd_->getFilter(queryFilterType));
+        return navigationMesh_->FindPath(dest, start, end, Vector3(crowd_->getQueryExtents()), crowd_->getFilter(queryFilterType));
 }
 
 Vector3 CrowdManager::GetRandomPoint(int queryFilterType, dtPolyRef* randomRef)

@@ -336,8 +336,10 @@ void CrowdAgent::SetTargetPosition(const Vector3& position)
         if (IsInCrowd())   // Make sure the previous method call is successful
         {
             dtPolyRef nearestRef;
-            Vector3 nearestPos = crowdManager_->FindNearestPoint(position, queryFilterType_, &nearestRef);
-            crowdManager_->GetCrowd()->requestMoveTarget(agentCrowdId_, nearestRef, nearestPos.Data());
+            dtStatus status;
+            Vector3 nearestPos = crowdManager_->FindNearestPoint(position, queryFilterType_, &nearestRef, &status);
+            if(dtStatusSucceed(status))
+                crowdManager_->GetCrowd()->requestMoveTarget(agentCrowdId_, nearestRef, nearestPos.Data());
         }
     }
 }
