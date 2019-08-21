@@ -54,7 +54,7 @@ static const unsigned MAX_NODE_ANIMATION_STATES = 256;
 extern const char* LOGIC_CATEGORY;
 
 AnimationController::AnimationController(Context* context) :
-    Component(context)
+    Component(context), deferRootMotion_(false)
 {
 }
 
@@ -71,6 +71,7 @@ void AnimationController::RegisterObject(Context* context)
         Variant::emptyBuffer, AM_NET | AM_LATESTDATA | AM_NOEDIT);
     URHO3D_MIXED_ACCESSOR_ATTRIBUTE("Node Animation States", GetNodeAnimationStatesAttr, SetNodeAnimationStatesAttr, VariantVector,
         Variant::emptyVariantVector, AM_FILE | AM_NOEDIT);
+    URHO3D_ACCESSOR_ATTRIBUTE("Defer RootMotion", IsRootMotionDeferred, SetRootMotionDeferred, bool, false, AM_DEFAULT);
 }
 
 void AnimationController::OnSetEnabled()
@@ -87,6 +88,17 @@ void AnimationController::OnSetEnabled()
 
 void AnimationController::Update(float timeStep)
 {
+
+    // Note current position of root bone
+    // TODO: Consider caching the skeleton root node
+    Node* rootNode=nullptr;
+    Vector3 oldPos;
+    AnimatedModel* model = GetComponent<AnimatedModel>();
+    if(model){
+      rootNode = model->GetSkeleton().GetRootBone()->node_;
+      oldPos = rootNode->GetWorldPosition();
+    }
+
     // Loop through animations
     for (unsigned i = 0; i < animations_.Size();)
     {
@@ -154,6 +166,20 @@ void AnimationController::Update(float timeStep)
     // Node hierarchy animations need to be applied manually
     for (Vector<SharedPtr<AnimationState> >::Iterator i = nodeAnimationStates_.Begin(); i != nodeAnimationStates_.End(); ++i)
         (*i)->Apply();
+
+    // Check if we wish to allow animation to move our root bone,
+    // or whether we would simply prefer to be able to query that information later...
+    if(model && deferRootMotion_)
+    {
+        // Compute the change in world position of the root bone (deltaPos_)
+        // Restore the previous world position of the root bone (oldPos)
+        // Compute the linear velocity implied by the change in position and time
+	deltaPos_ = rootNode->GetWorldPosition() - oldPos;
+        rootNode->SetWorldPosition(oldPos);
+        rootVelocity_ = deltaPos_ / timeStep;
+    }
+
+    
 }
 
 bool AnimationController::Play(const String& name, unsigned char layer, bool looped, float fadeInTime)
@@ -913,6 +939,13 @@ void AnimationController::HandleScenePostUpdate(StringHash eventType, VariantMap
     using namespace ScenePostUpdate;
 
     Update(eventData[P_TIMESTEP].GetFloat());
+}
+
+bool AnimationController::IsRootMotionDeferred() const { return deferRootMotion_; }
+void AnimationController::SetRootMotionDeferred(bool b) 
+{ 
+    deferRootMotion_=b; 
+    MarkNetworkUpdate();
 }
 
 }

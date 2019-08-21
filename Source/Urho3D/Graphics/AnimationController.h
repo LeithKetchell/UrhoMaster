@@ -188,6 +188,16 @@ public:
     /// Return node animation states attribute.
     VariantVector GetNodeAnimationStatesAttr() const;
 
+    /// Public accessors for enabling/disabling root motion
+    bool IsRootMotionDeferred() const;
+    void SetRootMotionDeferred(bool b);
+
+    /// Get sum change in world position of root bone due to animation
+    const Vector3& GetRootDeltaPosition(){ return deltaPos_; }
+
+    /// Get linear velocity of root bone due to animation
+    const Vector3 GetRootLinearVelocity() { return rootVelocity_; }  
+
 protected:
     /// Handle scene being assigned.
     void OnSceneSet(Scene* scene) override;
@@ -208,6 +218,10 @@ private:
     Vector<SharedPtr<AnimationState> > nodeAnimationStates_;
     /// Attribute buffer for network replication.
     mutable VectorBuffer attrBuffer_;
+
+    bool deferRootMotion_;
+    Vector3 deltaPos_;
+    Vector3 rootVelocity_;
 };
 
 }

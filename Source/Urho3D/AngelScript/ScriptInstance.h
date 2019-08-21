@@ -106,9 +106,10 @@ public:
     /// Set class name only. Recreate object if necessary.
     void SetClassName(const String& className);
     /// Query for a method by declaration and execute. Log an error if not found.
-    bool Execute(const String& declaration, const VariantVector& parameters = Variant::emptyVariantVector);
+    bool Execute(const String& declaration, const VariantVector& parameters = Variant::emptyVariantVector, Variant* rv=nullptr);
+
     /// Execute a method.
-    bool Execute(asIScriptFunction* method, const VariantVector& parameters = Variant::emptyVariantVector);
+    bool Execute(asIScriptFunction* method, const VariantVector& parameters = Variant::emptyVariantVector, Variant* rv=nullptr);
     /// Add a delay-executed method call, optionally repeating.
     void DelayedExecute
         (float delay, bool repeat, const String& declaration, const VariantVector& parameters = Variant::emptyVariantVector);

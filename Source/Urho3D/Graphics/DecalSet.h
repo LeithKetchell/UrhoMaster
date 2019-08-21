@@ -27,6 +27,8 @@
 #include "../Graphics/Skeleton.h"
 #include "../Math/Frustum.h"
 
+
+
 namespace Urho3D
 {
 
@@ -172,6 +174,11 @@ public:
     /// Return decals attribute.
     PODVector<unsigned char> GetDecalsAttr() const;
 
+    /// Return automatic removal mode when all decals have expired / been removed
+    AutoRemoveMode GetAutoRemoveMode() const { return autoRemove_; }
+    //// Set to remove either the emitter component or its owner node from the scene automatically on particle effect completion. Disabled by default.
+    void SetAutoRemoveMode(AutoRemoveMode mode);
+
 protected:
     /// Recalculate the world-space bounding box.
     void OnWorldBoundingBoxUpdate() override;
@@ -249,6 +256,8 @@ private:
     bool assignBonesPending_;
     /// Subscribed to scene post update event flag.
     bool subscribed_;
+    /// Automatic removal mode.
+    AutoRemoveMode autoRemove_;
 };
 
 }

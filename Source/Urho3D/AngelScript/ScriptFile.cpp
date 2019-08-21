@@ -302,28 +302,8 @@ bool ScriptFile::Execute(const String& declaration, const VariantVector& paramet
     return Execute(function, parameters, functionReturn, unprepare);
 }
 
-bool ScriptFile::Execute(asIScriptFunction* function, const VariantVector& parameters, Variant* functionReturn, bool unprepare)
-{
-    URHO3D_PROFILE(ExecuteFunction);
-
-    if (!compiled_ || !function)
-        return false;
-
-    // It is possible that executing the function causes us to unload. Therefore do not rely on member variables
-    // However, we are not prepared for the whole script system getting destroyed during execution (should never happen)
-    Script* scriptSystem = script_;
-
-    asIScriptContext* context = scriptSystem->GetScriptFileContext();
-    if (context->Prepare(function) < 0)
-        return false;
-
-    SetParameters(context, function, parameters);
-
-    scriptSystem->IncScriptNestingLevel();
-    bool success = (context->Execute() == asEXECUTION_FINISHED);
-    if (success && (functionReturn != nullptr))
-    {
-        const int typeId = function->GetReturnTypeId();
+void ScriptFile::UnpackReturnValue(asIScriptContext* context, asIScriptFunction* functionOrMethod, Variant* functionReturn){
+        const int typeId = functionOrMethod->GetReturnTypeId();
 
         asIScriptEngine* engine = script_->GetScriptEngine();
         asITypeInfo* typeInfo = engine->GetTypeInfoById(typeId);
@@ -362,83 +342,302 @@ bool ScriptFile::Execute(asIScriptFunction* function, const VariantVector& param
             case asTYPEID_DOUBLE:
                 *functionReturn = Variant(context->GetReturnDouble());
                 break;
+            default:
+                URHO3D_LOGERROR("Unhandled AS primitive type detected");
             }
         }
         else if (typeInfo->GetFlags() & asOBJ_REF)
         {
-            *functionReturn = Variant(static_cast<RefCounted*>(context->GetReturnObject()));
+            /// Check for special case: array<T> is reported as a reference type
+            /// but CScriptArray is NOT an Urho refcounted class!
+            String name=typeInfo->GetName();
+            if(name=="Array")
+            {
+                /// We have an array<T> on our hands...
+                CScriptArray* ary = static_cast<CScriptArray*>(context->GetReturnObject());
+
+                /// Initialize output VariantVector
+                int cnt=ary->GetSize();
+                VariantVector vary(cnt);
+
+                if(cnt==0){
+                    URHO3D_LOGWARNING("Empty Array return value was converted to Empty VariantVector");
+                    *functionReturn = Variant(vary);
+                }
+                else
+                {
+                    /// Query the type of array elements (ie type of T)
+                    String subname=typeInfo->GetSubType(0)->GetName();
+                    int flags=typeInfo->GetSubType(0)->GetFlags();
+
+                    /// Check if we have an array of "references"
+                    /// If so, we will assume that all references are pointers to Urho object pointers
+                    /// They almost certainly derive from Object, but definitely derive from RefCounted
+                    if(flags&asOBJ_REF)
+                    {
+                        for(int i=0;i<cnt;i++)
+                        {
+                            RefCounted** v = static_cast<RefCounted**>(ary->At(i));
+                            vary[i]=(*v);
+                        }
+                        *functionReturn = Variant(vary);
+
+                    /// Check if we have an array of "values"
+                    }else if(flags&asOBJ_VALUE){
+
+                        /// Check for special case: value is already a Variant
+                        if(subname=="Variant")
+                        {
+                            for(int i=0;i<cnt;i++)
+                                vary[i]=*static_cast<Variant*>(ary->At(i));
+                            *functionReturn = Variant(vary);
+
+
+                        }else{
+                            /// Handle all variant-supported types
+                            const VariantType variantType = Variant::GetTypeFromName(subname);
+                            switch (variantType)
+                            {
+                            case VAR_BOOL:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<bool*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_FLOAT:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<float*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_DOUBLE:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<double*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_INT:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<int*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_INT64:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<long long int*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_STRING:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<String*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_VECTOR2:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<Vector2*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_VECTOR3:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<Vector3*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_VECTOR4:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<Vector4*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_QUATERNION:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<Quaternion*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_COLOR:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<Color*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_INTRECT:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<IntRect*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_INTVECTOR2:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<IntVector2*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_MATRIX3:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<Matrix3*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_MATRIX3X4:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<Matrix3x4*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_MATRIX4:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<Matrix4*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_RECT:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<Rect*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_INTVECTOR3:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<IntVector3*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            case VAR_VARIANTVECTOR:
+                                for(int i=0;i<cnt;i++)
+                                    vary[i]=*static_cast<VariantVector*>(ary->At(i));
+                                *functionReturn = Variant(vary);
+                                break;
+
+                            default:
+                                URHO3D_LOGERROR("Array value type is not supported by Variant: typeid is " +String(typeId)+" VarType="+String((int)variantType)+" "+ subname);
+                            }
+                        }
+
+                    }else{
+                        URHO3D_LOGERROR("Unhandled type detected in Array: "+subname);
+                        *functionReturn = Variant::EMPTY;
+                    }
+                }
+            }
+            else{
+                /// We can generally assume that Handles are pointers to Urho3D Objects
+                /// which always derive from "RefCounted"...
+                RefCounted* obj = static_cast<RefCounted*>(context->GetReturnObject());
+                *functionReturn = Variant(obj);
+            }
+
         }
         else if (typeInfo->GetFlags() & asOBJ_VALUE)
         {
             void* returnedObject = context->GetReturnObject();
 
-            const VariantType variantType = Variant::GetTypeFromName(typeInfo->GetName());
-            switch (variantType)
-            {
-            case VAR_STRING:
-                *functionReturn = *static_cast<String*>(returnedObject);
-                break;
+	    if(String(typeInfo->GetName())=="Variant")
+	    {
+                    *functionReturn=*static_cast<Variant*>(returnedObject);
 
-            case VAR_VECTOR2:
-                *functionReturn = *static_cast<Vector2*>(returnedObject);
-                break;
+	    }else{
+		    const VariantType variantType = Variant::GetTypeFromName(typeInfo->GetName());
+		    switch (variantType)
+		    {
+		    case VAR_STRING:
+		        *functionReturn = *static_cast<String*>(returnedObject);
+		        break;
 
-            case VAR_VECTOR3:
-                *functionReturn = *static_cast<Vector3*>(returnedObject);
-                break;
+		    case VAR_VECTOR2:
+		        *functionReturn = *static_cast<Vector2*>(returnedObject);
+		        break;
 
-            case VAR_VECTOR4:
-                *functionReturn = *static_cast<Vector4*>(returnedObject);
-                break;
+		    case VAR_VECTOR3:
+		        *functionReturn = *static_cast<Vector3*>(returnedObject);
+		        break;
 
-            case VAR_QUATERNION:
-                *functionReturn = *static_cast<Quaternion*>(returnedObject);
-                break;
+		    case VAR_VECTOR4:
+		        *functionReturn = *static_cast<Vector4*>(returnedObject);
+		        break;
 
-            case VAR_COLOR:
-                *functionReturn = *static_cast<Color*>(returnedObject);
-                break;
+		    case VAR_QUATERNION:
+		        *functionReturn = *static_cast<Quaternion*>(returnedObject);
+		        break;
 
-            case VAR_INTRECT:
-                *functionReturn = *static_cast<IntRect*>(returnedObject);
-                break;
+		    case VAR_COLOR:
+		        *functionReturn = *static_cast<Color*>(returnedObject);
+		        break;
 
-            case VAR_INTVECTOR2:
-                *functionReturn = *static_cast<IntVector2*>(returnedObject);
-                break;
+		    case VAR_INTRECT:
+		        *functionReturn = *static_cast<IntRect*>(returnedObject);
+		        break;
 
-            case VAR_MATRIX3:
-                *functionReturn = *static_cast<Matrix3*>(returnedObject);
-                break;
+		    case VAR_INTVECTOR2:
+		        *functionReturn = *static_cast<IntVector2*>(returnedObject);
+		        break;
 
-            case VAR_MATRIX3X4:
-                *functionReturn = *static_cast<Matrix3x4*>(returnedObject);
-                break;
+		    case VAR_MATRIX3:
+		        *functionReturn = *static_cast<Matrix3*>(returnedObject);
+		        break;
 
-            case VAR_MATRIX4:
-                *functionReturn = *static_cast<Matrix4*>(returnedObject);
-                break;
+		    case VAR_MATRIX3X4:
+		        *functionReturn = *static_cast<Matrix3x4*>(returnedObject);
+		        break;
 
-            case VAR_RECT:
-                *functionReturn = *static_cast<Rect*>(returnedObject);
-                break;
+		    case VAR_MATRIX4:
+		        *functionReturn = *static_cast<Matrix4*>(returnedObject);
+		        break;
 
-            case VAR_INTVECTOR3:
-                *functionReturn = *static_cast<IntVector3*>(returnedObject);
-                break;
+		    case VAR_RECT:
+		        *functionReturn = *static_cast<Rect*>(returnedObject);
+		        break;
 
-            default:
-                URHO3D_LOGERRORF("Return type (%c) is not supported", typeInfo->GetName());
-                break;
-            }
+		    case VAR_INTVECTOR3:
+		        *functionReturn = *static_cast<IntVector3*>(returnedObject);
+		        break;
+
+		    case VAR_VARIANTVECTOR:
+			*functionReturn = *static_cast<VariantVector*>(returnedObject);
+			break;
+
+		    default:
+		        URHO3D_LOGERROR("Return value type is not supported: typeid is " +String(typeId)+" VarType="+String((int)variantType)+" "+ typeInfo->GetName());
+		        break;
+		    }
+	    }
         }
         else
         {
-            URHO3D_LOGERRORF("Return type (%c)is not supported", typeInfo->GetName());
+            URHO3D_LOGERROR("Return type is not supported: " + String(typeInfo->GetName()));
         }
-    }
+}
+
+bool ScriptFile::Execute(asIScriptFunction* function, const VariantVector& parameters, Variant* functionReturn, bool unprepare)
+{
+    URHO3D_PROFILE(ExecuteFunction);
+
+    if (!compiled_ || !function)
+        return false;
+
+    // It is possible that executing the function causes us to unload. Therefore do not rely on member variables
+    // However, we are not prepared for the whole script system getting destroyed during execution (should never happen)
+    Script* scriptSystem = script_;
+
+    asIScriptContext* context = scriptSystem->GetScriptFileContext();
+    if (context->Prepare(function) < 0)
+        return false;
+
+    SetParameters(context, function, parameters);
+
+    scriptSystem->IncScriptNestingLevel();
+
+    bool success = (context->Execute() == asEXECUTION_FINISHED);
+
+    if (success && (functionReturn != nullptr))
+	UnpackReturnValue(context, function, functionReturn);
+
     if (unprepare)
         context->Unprepare();
+
     scriptSystem->DecScriptNestingLevel();
 
     return success;
@@ -460,10 +659,11 @@ bool ScriptFile::Execute(asIScriptObject* object, const String& declaration, con
     return Execute(object, method, parameters, functionReturn, unprepare);
 }
 
+
 bool ScriptFile::Execute(asIScriptObject* object, asIScriptFunction* method, const VariantVector& parameters, Variant* functionReturn,
     bool unprepare)
 {
-    URHO3D_PROFILE(ExecuteMethod);
+//    URHO3D_PROFILE(ExecuteMethod);
 
     if (!compiled_ || !object || !method)
         return false;
@@ -481,12 +681,19 @@ bool ScriptFile::Execute(asIScriptObject* object, asIScriptFunction* method, con
 
     scriptSystem->IncScriptNestingLevel();
     bool success = context->Execute() >= 0;
+
+    if (success && (functionReturn != nullptr))
+    {
+	UnpackReturnValue(context, method, functionReturn);
+    }
+
     if (unprepare)
         context->Unprepare();
     scriptSystem->DecScriptNestingLevel();
 
     return success;
 }
+
 
 void ScriptFile::DelayedExecute(float delay, bool repeat, const String& declaration, const VariantVector& parameters)
 {
@@ -939,7 +1146,7 @@ void ScriptFile::SetParameters(asIScriptContext* context, asIScriptFunction* fun
                     break;
 
                 default:
-                    break;
+		    URHO3D_LOGERROR("Unhandled ArgType: "+String((int)parameters[i].GetType()));
                 }
             }
             break;

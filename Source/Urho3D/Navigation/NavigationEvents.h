@@ -160,6 +160,9 @@ URHO3D_EVENT(E_NAVIGATION_OBSTACLE_ADDED, NavigationObstacleAdded)
     URHO3D_PARAM(P_POSITION, Position); // Vector3
     URHO3D_PARAM(P_RADIUS, Radius); // float
     URHO3D_PARAM(P_HEIGHT, Height); // float
+    URHO3D_PARAM(P_LENGTH, Length); // float
+    URHO3D_PARAM(P_YANGLE, YAngle); // float
+    URHO3D_PARAM(P_TYPE, Type); // unsigned
 }
 
 /// Removal of obstacle from dynamic navigation mesh.

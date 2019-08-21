@@ -44,6 +44,7 @@
 #include <Detour/DetourNavMeshBuilder.h>
 #include <DetourTileCache/DetourTileCache.h>
 #include <DetourTileCache/DetourTileCacheBuilder.h>
+#include <Detour/DetourNavMeshQuery.h>
 #include <Recast/Recast.h>
 
 // DebugNew is deliberately not used because the macro 'free' conflicts with DetourTileCache's LinearAllocator interface
@@ -1089,11 +1090,36 @@ void DynamicNavigationMesh::AddObstacle(Obstacle* obstacle, bool silent)
         while (tileCache_->isObstacleQueueFull())
             tileCache_->update(1, navMesh_);
 
-        if (dtStatusFailed(tileCache_->addObstacle(pos, obstacle->GetRadius(), obstacle->GetHeight(), &refHolder)))
-        {
-            URHO3D_LOGERROR("Failed to add obstacle");
-            return;
+
+	Vector3 min,max;
+
+	switch(obstacle->GetObstacleType()){
+            case 0:
+		if (dtStatusFailed(tileCache_->addObstacle(pos, obstacle->GetRadius(), obstacle->GetHeight(), &refHolder)))
+		{
+		    URHO3D_LOGERROR("Failed to add obstacle");
+		    return;
+		}
+		break;
+	    case 1:
+		min = Vector3(-obstacle->GetRadius(), -obstacle->GetHeight(), -obstacle->GetLength() );
+		max = Vector3( obstacle->GetRadius(),  obstacle->GetHeight(),  obstacle->GetLength() );
+		if (dtStatusFailed(tileCache_->addBoxObstacle( (float*)&min, (float*) &max, &refHolder)))
+		{
+		    URHO3D_LOGERROR("Failed to add obstacle");
+		    return;
+		}
+		break;
+            case 2:
+		max = Vector3( obstacle->GetRadius()*0.5f,  obstacle->GetHeight()*0.5f,  obstacle->GetLength()*0.5f );
+		if (dtStatusFailed(tileCache_->addBoxObstacle(pos, (float*) &max , 0.0f,  &refHolder)))
+		{
+		    URHO3D_LOGERROR("Failed to add obstacle");
+		    return;
+		}
+		break;
         }
+
         obstacle->obstacleId_ = refHolder;
         assert(refHolder > 0);
 
@@ -1106,6 +1132,9 @@ void DynamicNavigationMesh::AddObstacle(Obstacle* obstacle, bool silent)
             eventData[P_POSITION] = obstacle->GetNode()->GetWorldPosition();
             eventData[P_RADIUS] = obstacle->GetRadius();
             eventData[P_HEIGHT] = obstacle->GetHeight();
+	    eventData[P_LENGTH] = obstacle->GetLength();
+            eventData[P_YANGLE] = obstacle->GetYRotation();
+            eventData[P_TYPE] = obstacle->GetObstacleType();
             SendEvent(E_NAVIGATION_OBSTACLE_ADDED, eventData);
         }
     }

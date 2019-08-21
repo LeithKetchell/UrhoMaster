@@ -22,6 +22,12 @@
 
 #include "../Precompiled.h"
 
+#include <cfloat>
+#include <Detour/DetourNavMesh.h>
+#include <Detour/DetourNavMeshBuilder.h>
+#include <Detour/DetourNavMeshQuery.h>
+#include <Recast/Recast.h>
+
 #include "../Core/Context.h"
 #include "../Core/Profiler.h"
 #include "../Graphics/DebugRenderer.h"
@@ -46,12 +52,6 @@
 #include "../Physics/CollisionShape.h"
 #endif
 #include "../Scene/Scene.h"
-
-#include <cfloat>
-#include <Detour/DetourNavMesh.h>
-#include <Detour/DetourNavMeshBuilder.h>
-#include <Detour/DetourNavMeshQuery.h>
-#include <Recast/Recast.h>
 
 #include "../DebugNew.h"
 
@@ -605,7 +605,7 @@ void NavigationMesh::RemoveAllTiles()
 }
 
 Vector3 NavigationMesh::FindNearestPoint(const Vector3& point, const Vector3& extents, const dtQueryFilter* filter,
-    dtPolyRef* nearestRef)
+    dtPolyRef* nearestRef, dtStatus* pResult)
 {
     if (!InitializeQuery())
         return point;
@@ -619,7 +619,9 @@ Vector3 NavigationMesh::FindNearestPoint(const Vector3& point, const Vector3& ex
     dtPolyRef pointRef;
     if (!nearestRef)
         nearestRef = &pointRef;
-    navMeshQuery_->findNearestPoly(&localPoint.x_, &extents.x_, filter ? filter : queryFilter_.Get(), nearestRef, &nearestPoint.x_);
+    dtStatus result = navMeshQuery_->findNearestPoly(&localPoint.x_, &extents.x_, filter ? filter : queryFilter_.Get(), nearestRef, &nearestPoint.x_);
+    if(pResult)
+        *pResult = result;
     return *nearestRef ? transform * nearestPoint : point;
 }
 
@@ -650,25 +652,27 @@ Vector3 NavigationMesh::MoveAlongSurface(const Vector3& start, const Vector3& en
     return transform * resultPos;
 }
 
-void NavigationMesh::FindPath(PODVector<Vector3>& dest, const Vector3& start, const Vector3& end, const Vector3& extents,
+dtStatus NavigationMesh::FindPath(PODVector<Vector3>& dest, const Vector3& start, const Vector3& end, const Vector3& extents,
     const dtQueryFilter* filter)
 {
     PODVector<NavigationPathPoint> navPathPoints;
-    FindPath(navPathPoints, start, end, extents, filter);
+    dtStatus result = FindPath(navPathPoints, start, end, extents, filter);
 
     dest.Clear();
     for (unsigned i = 0; i < navPathPoints.Size(); ++i)
         dest.Push(navPathPoints[i].position_);
+
+    return result;
 }
 
-void NavigationMesh::FindPath(PODVector<NavigationPathPoint>& dest, const Vector3& start, const Vector3& end,
+dtStatus NavigationMesh::FindPath(PODVector<NavigationPathPoint>& dest, const Vector3& start, const Vector3& end,
     const Vector3& extents, const dtQueryFilter* filter)
 {
     URHO3D_PROFILE(FindPath);
     dest.Clear();
 
     if (!InitializeQuery())
-        return;
+        return DT_FAILURE;
 
     // Navigation data is in local space. Transform path points from world to local
     const Matrix3x4& transform = node_->GetWorldTransform();
@@ -684,15 +688,15 @@ void NavigationMesh::FindPath(PODVector<NavigationPathPoint>& dest, const Vector
     navMeshQuery_->findNearestPoly(&localEnd.x_, &extents.x_, queryFilter, &endRef, nullptr);
 
     if (!startRef || !endRef)
-        return;
+        return DT_FAILURE;
 
     int numPolys = 0;
     int numPathPoints = 0;
 
-    navMeshQuery_->findPath(startRef, endRef, &localStart.x_, &localEnd.x_, queryFilter, pathData_->polys_, &numPolys,
+    dtStatus result = navMeshQuery_->findPath(startRef, endRef, &localStart.x_, &localEnd.x_, queryFilter, pathData_->polys_, &numPolys,
         MAX_POLYS);
     if (!numPolys)
-        return;
+        return DT_FAILURE;
 
     Vector3 actualLocalEnd = localEnd;
 
@@ -735,6 +739,8 @@ void NavigationMesh::FindPath(PODVector<NavigationPathPoint>& dest, const Vector
 
         dest.Push(pt);
     }
+
+    return result;
 }
 
 Vector3 NavigationMesh::GetRandomPoint(const dtQueryFilter* filter, dtPolyRef* randomRef)

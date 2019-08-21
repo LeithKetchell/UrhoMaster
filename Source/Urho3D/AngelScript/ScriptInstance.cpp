@@ -274,7 +274,7 @@ void ScriptInstance::SetClassName(const String& className)
     MarkNetworkUpdate();
 }
 
-bool ScriptInstance::Execute(const String& declaration, const VariantVector& parameters)
+bool ScriptInstance::Execute(const String& declaration, const VariantVector& parameters, Variant* rv)
 {
     if (!scriptObject_)
         return false;
@@ -286,15 +286,16 @@ bool ScriptInstance::Execute(const String& declaration, const VariantVector& par
         return false;
     }
 
-    return scriptFile_->Execute(scriptObject_, method, parameters);
+    URHO3D_LOGWARNING("Executing Method by Declaration: "+declaration);
+    return scriptFile_->Execute(scriptObject_, method, parameters, rv);
 }
 
-bool ScriptInstance::Execute(asIScriptFunction* method, const VariantVector& parameters)
+bool ScriptInstance::Execute(asIScriptFunction* method, const VariantVector& parameters, Variant* rv)
 {
     if (!method || !scriptObject_)
         return false;
 
-    return scriptFile_->Execute(scriptObject_, method, parameters);
+    return scriptFile_->Execute(scriptObject_, method, parameters, rv);
 }
 
 void ScriptInstance::DelayedExecute(float delay, bool repeat, const String& declaration, const VariantVector& parameters)

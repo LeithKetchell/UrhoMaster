@@ -41,7 +41,11 @@ Obstacle::Obstacle(Context* context) :
     Component(context),
     height_(5.0f),
     radius_(5.0f),
-    obstacleId_(0)
+    length_(5.0f),
+    angle_(0.0f),
+    useNodeAngle_(true),
+    obstacleId_(0),
+    obstacleType_(0)
 {
 }
 
@@ -57,6 +61,10 @@ void Obstacle::RegisterObject(Context* context)
     URHO3D_COPY_BASE_ATTRIBUTES(Component);
     URHO3D_ACCESSOR_ATTRIBUTE("Radius", GetRadius, SetRadius, float, 5.0f, AM_DEFAULT);
     URHO3D_ACCESSOR_ATTRIBUTE("Height", GetHeight, SetHeight, float, 5.0f, AM_DEFAULT);
+    URHO3D_ACCESSOR_ATTRIBUTE("Length", GetLength, SetLength, float, 5.0f, AM_DEFAULT);
+    URHO3D_ACCESSOR_ATTRIBUTE("Angle", GetYRotation, SetYRotation, float, 0.0f, AM_DEFAULT);
+    URHO3D_ACCESSOR_ATTRIBUTE("UseNodeAngle", GetUseNodeAngle, SetUseNodeAngle, bool, true, AM_DEFAULT);
+    URHO3D_ACCESSOR_ATTRIBUTE("ObstacleType",   GetObstacleType, SetObstacleType, unsigned,0, AM_DEFAULT);
 }
 
 void Obstacle::OnSetEnabled()
@@ -81,6 +89,33 @@ void Obstacle::SetHeight(float newHeight)
 void Obstacle::SetRadius(float newRadius)
 {
     radius_ = newRadius;
+    if (ownerMesh_)
+        ownerMesh_->ObstacleChanged(this);
+    MarkNetworkUpdate();
+}
+
+void Obstacle::SetLength(float newLength){
+    length_ = newLength;
+    if (ownerMesh_)
+        ownerMesh_->ObstacleChanged(this);
+    MarkNetworkUpdate();
+}
+
+void Obstacle::SetYRotation(float angle)
+{
+    angle_=angle;
+    if (ownerMesh_)
+        ownerMesh_->ObstacleChanged(this);
+    MarkNetworkUpdate();
+}
+
+void Obstacle::SetUseNodeAngle(bool b)
+{
+    useNodeAngle_ = b;
+}
+
+void Obstacle::SetObstacleType(unsigned t) { 
+    obstacleType_=t; 
     if (ownerMesh_)
         ownerMesh_->ObstacleChanged(this);
     MarkNetworkUpdate();
@@ -135,6 +170,10 @@ void Obstacle::OnMarkedDirty(Node* node)
             return;
         }
 
+	// update Y rotation angle for type-2 obstacles
+        if(obstacleType_==2 && useNodeAngle_)
+ 	    angle_ = node->GetRotation().EulerAngles().y_ * M_DEGTORAD;
+
         ownerMesh_->ObstacleChanged(this);
     }
 }
@@ -150,7 +189,23 @@ void Obstacle::HandleNavigationTileAdded(StringHash eventType, VariantMap& event
 void Obstacle::DrawDebugGeometry(DebugRenderer* debug, bool depthTest)
 {
     if (debug && IsEnabledEffective())
-        debug->AddCylinder(node_->GetWorldPosition(), radius_, height_, Color(0.0f, 1.0f, 1.0f), depthTest);
+    {
+	Vector3 worldpos = node_->GetWorldPosition();
+	BoundingBox box( Vector3(-radius_, -height_, -length_) + worldpos, Vector3(radius_, height_, length_)+worldpos);
+	Matrix3x4 xform=node_->GetWorldTransform();
+        switch(obstacleType_){
+            case 0:
+		debug->AddCylinder(node_->GetWorldPosition(), radius_, height_, Color(0.0f, 1.0f, 1.0f), depthTest);
+		break;
+	    case 1:
+		debug->AddBoundingBox( box, Color(0.0f, 1.0f, 1.0f), depthTest);
+		break;
+	    case 2:
+		// TODO: set the Y orientation!
+		debug->AddBoundingBox( box, xform, Color(0.0f, 1.0f, 1.0f), depthTest);
+		break;		
+	}
+    }
 }
 
 void Obstacle::DrawDebugGeometry(bool depthTest)

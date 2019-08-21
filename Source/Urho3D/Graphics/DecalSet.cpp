@@ -46,9 +46,12 @@
 #pragma warning(disable:6293)
 #endif
 
+
+
 namespace Urho3D
 {
 
+extern const char* autoRemoveModeNames[];
 extern const char* GEOMETRY_CATEGORY;
 
 static const unsigned MIN_VERTICES = 4;
@@ -166,7 +169,8 @@ DecalSet::DecalSet(Context* context) :
     boundingBoxDirty_(true),
     skinningDirty_(false),
     assignBonesPending_(false),
-    subscribed_(false)
+    subscribed_(false),
+    autoRemove_(REMOVE_DISABLED)
 {
     geometry_->SetIndexBuffer(indexBuffer_);
 
@@ -192,6 +196,13 @@ void DecalSet::RegisterObject(Context* context)
     URHO3D_COPY_BASE_ATTRIBUTES(Drawable);
     URHO3D_MIXED_ACCESSOR_ATTRIBUTE("Decals", GetDecalsAttr, SetDecalsAttr, PODVector<unsigned char>, Variant::emptyBuffer,
         AM_FILE | AM_NOEDIT);
+    URHO3D_ENUM_ATTRIBUTE("Autoremove Mode", autoRemove_, autoRemoveModeNames, REMOVE_DISABLED, AM_DEFAULT);
+}
+
+void DecalSet::SetAutoRemoveMode(AutoRemoveMode mode)
+{
+    autoRemove_ = mode;
+    MarkNetworkUpdate();
 }
 
 void DecalSet::ApplyAttributes()
@@ -508,6 +519,8 @@ void DecalSet::RemoveAllDecals()
     bones_.Clear();
     skinMatrices_.Clear();
     UpdateBatch();
+
+    DoAutoRemove(autoRemove_);
 }
 
 Material* DecalSet::GetMaterial() const
@@ -986,7 +999,10 @@ List<Decal>::Iterator DecalSet::RemoveDecal(List<Decal>::Iterator i)
     numVertices_ -= i->vertices_.Size();
     numIndices_ -= i->indices_.Size();
     MarkDecalsDirty();
-    return decals_.Erase(i);
+    auto it = decals_.Erase(i);
+    if(decals_.Empty())
+	DoAutoRemove(autoRemove_);
+    return it;
 }
 
 void DecalSet::MarkDecalsDirty()

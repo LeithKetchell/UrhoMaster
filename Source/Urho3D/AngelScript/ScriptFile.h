@@ -27,6 +27,13 @@
 #include "../Container/HashSet.h"
 #include "../Resource/Resource.h"
 
+#include <AngelScript/angelscript.h>
+#include "../AngelScript/Script.h"
+#include "../AngelScript/ScriptFile.h"
+#include "../AngelScript/ScriptInstance.h"
+#include "../IO/Log.h"
+#include "../AngelScript/Addons.h"
+
 class asIScriptContext;
 class asIScriptEngine;
 class asIScriptFunction;
@@ -152,6 +159,10 @@ private:
     SharedArrayPtr<unsigned char> loadByteCode_;
     /// Byte code size for asynchronous loading.
     unsigned loadByteCodeSize_{};
+
+    /// Unpack a function or method return value into a Variant
+    void UnpackReturnValue(asIScriptContext* context, asIScriptFunction* FunctionOrMethod, Variant* returnValue);
+
 };
 
 /// Helper class for forwarding events to script objects that are not part of a scene.

@@ -61,6 +61,18 @@ public:
     /// Set the blocking radius of this obstacle.
     void SetRadius(float newRadius);
 
+    float GetLength() const { return length_;}
+    void SetLength(float len);
+
+    float GetYRotation() const {return angle_;}
+    void SetYRotation(float a);
+
+    bool GetUseNodeAngle() const { return useNodeAngle_; }
+    void SetUseNodeAngle(bool);
+
+    unsigned GetObstacleType() const { return obstacleType_; }
+    void SetObstacleType(unsigned t);
+
     /// Get the internal obstacle ID.
     unsigned GetObstacleID() const { return obstacleId_; }
 
@@ -80,10 +92,23 @@ protected:
     void HandleNavigationTileAdded(StringHash eventType, VariantMap& eventData);
 
 private:
-    /// Radius of this obstacle.
+    /// Radius of this obstacle if cylinder type, width if aabb or obb
     float radius_;
+
     /// Height of this obstacle, extends 1/2 height below and 1/2 height above the owning node's position.
     float height_;
+
+    /// Length of this obstacle, for AABB or OBB types
+    float length_;
+
+    /// Rotation angle around Y axis
+    float angle_;
+
+    // Inherit Y rotation from parent node
+    bool useNodeAngle_;
+
+    /// Type of obstacle: 0=vertical cylinder, 1=aabb, 2="obb" (aabb with rotation around Y)
+    unsigned obstacleType_;
 
     /// Id received from tile cache.
     unsigned obstacleId_;
