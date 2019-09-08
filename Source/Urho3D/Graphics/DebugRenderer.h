@@ -144,7 +144,7 @@ public:
     /// Add a circle.
     void AddCircle(const Vector3& center, const Vector3& normal, float radius, const Color& color, int steps = 64, bool depthTest = true);
     /// Add a cross.
-    void AddCross(const Vector3& center, float size, const Color& color, bool depthTest = true);
+    void AddCross(const Vector3& center,  const Quaternion& orient, float size, const Color& color, bool depthTest = true);
     /// Add a quad on the XZ plane.
     void AddQuad(const Vector3& center, float width, float height, const Color& color, bool depthTest = true);
 

@@ -96,7 +96,7 @@ public:
     void DrawDebugGeometry(DebugRenderer* debug, bool depthTest) override;
 
     /// Submit a new target position request for this agent.
-    void SetTargetPosition(const Vector3& position);
+    dtStatus SetTargetPosition(const Vector3& position);
     /// Submit a new target velocity request for this agent.
     void SetTargetVelocity(const Vector3& velocity);
     /// Reset any target request for the specified agent. Note that the agent will continue to move into the current direction; set a zero target velocity to actually stop.

@@ -323,8 +323,9 @@ void CrowdAgent::RemoveAgentFromCrowd()
     }
 }
 
-void CrowdAgent::SetTargetPosition(const Vector3& position)
+dtStatus CrowdAgent::SetTargetPosition(const Vector3& position)
 {
+    dtStatus status=DT_FAILURE;
     if (position != targetPosition_ || CA_REQUESTEDTARGET_POSITION != requestedTargetType_)
     {
         targetPosition_ = position;
@@ -336,12 +337,12 @@ void CrowdAgent::SetTargetPosition(const Vector3& position)
         if (IsInCrowd())   // Make sure the previous method call is successful
         {
             dtPolyRef nearestRef;
-            dtStatus status;
             Vector3 nearestPos = crowdManager_->FindNearestPoint(position, queryFilterType_, &nearestRef, &status);
             if(dtStatusSucceed(status))
                 crowdManager_->GetCrowd()->requestMoveTarget(agentCrowdId_, nearestRef, nearestPos.Data());
         }
     }
+    return status;
 }
 
 void CrowdAgent::SetTargetVelocity(const Vector3& velocity)

@@ -456,18 +456,25 @@ void DebugRenderer::AddCircle(const Vector3& center, const Vector3& normal, floa
     AddLine(center, p, uintColor, depthTest);
 }
 
-void DebugRenderer::AddCross(const Vector3& center, float size, const Color& color, bool depthTest)
+void DebugRenderer::AddCross(const Vector3& center,  const Quaternion& orientation, float size, const Color& color, bool depthTest)
 {
     unsigned uintColor = color.ToUInt();
 
+
     float halfSize = size / 2.0f;
+
+    
+
     for (int i = 0; i < 3; ++i)
     {
-        float start[3] = { center.x_, center.y_, center.z_ };
-        float end[3] = { center.x_, center.y_, center.z_ };
-        start[i] -= halfSize;
-        end[i] += halfSize;
-        AddLine(Vector3(start), Vector3(end), uintColor, depthTest);
+
+        Vector3 start(i==0?-halfSize:0,i==1?-halfSize:0,i==2?-halfSize:0);
+        Vector3 end(i==0?halfSize:0,i==1?halfSize:0,i==2?halfSize:0);
+
+        Vector3 vstart = center + orientation * Vector3(start);
+        Vector3 vend   = center + orientation * Vector3(end);        
+
+        AddLine(vstart, vend, uintColor, depthTest);
     }
 }
 
