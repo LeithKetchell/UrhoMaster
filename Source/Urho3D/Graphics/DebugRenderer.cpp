@@ -397,6 +397,49 @@ void DebugRenderer::AddCylinder(const Vector3& position, float radius, float hei
     AddLine(position - offsetZVec, position + heightVec - offsetZVec, color, depthTest);
 }
 
+void DebugRenderer::AddSolidCylinder(const Vector3& position, const Vector3& normal, float radius, float height, const Color& color, int steps, bool drawCaps, bool depthTest)
+{
+
+    Quaternion orientation;
+    orientation.FromRotationTo(Vector3::UP, normal.Normalized());
+    Vector3 p = orientation * Vector3(radius, 0, 0) + position;
+    unsigned uintColor = color.ToUInt();
+
+    Vector3 heightVec(0,height,0);
+
+    for(int i = 1; i <= steps; ++i)
+    {
+        const float angle = (float)i / (float)steps * 360.0f;
+        Vector3 v(radius * Cos(angle), 0, radius * Sin(angle));
+        Vector3 c = orientation * v + position;
+
+        AddTriangle(p,c,c+heightVec,color, depthTest);
+        AddTriangle(p,c+heightVec,p+heightVec, color, depthTest);
+
+        if(drawCaps)
+        {
+            AddTriangle(p, c, position, color, depthTest);
+            AddTriangle(p+heightVec, c+heightVec, position+heightVec, color, depthTest);
+        } 
+
+        p = c;
+    }
+
+}
+
+void DebugRenderer::AddSolidArrow(const Vector3& position, const Vector3& normal, float radius, float height, Color color, int steps, bool depthTest){
+    
+    Quaternion orientation;
+    orientation.FromRotationTo(Vector3::UP, normal.Normalized());
+
+    Vector3 pos = orientation * Vector3(0,height,0) + position;
+    AddSolidCone(     pos, Vector3::UP, radius,              color, steps,       depthTest);
+    AddSolidCylinder( position, normal, radius/2.0f, height, color, steps, true, depthTest);
+
+
+}
+
+
 void DebugRenderer::AddSkeleton(const Skeleton& skeleton, const Color& color, bool depthTest)
 {
     const Vector<Bone>& bones = skeleton.GetBones();
@@ -501,6 +544,55 @@ void DebugRenderer::AddCircle(const Vector3& center, const Vector3& normal, floa
     p = center + normal * (radius / 4.0f);
     AddLine(center, p, uintColor, depthTest);
 }
+
+void DebugRenderer::AddSolidCone(const Vector3& center, const Vector3& normal, float radius, const Color& color, int steps, bool depthTest)
+{
+    Quaternion orientation;
+    orientation.FromRotationTo(Vector3::UP, normal.Normalized());
+    Vector3 p = orientation * Vector3(radius, 0, 0) + center;
+    unsigned uintColor = color.ToUInt();
+
+    Vector3 tip = center+normal*radius;
+
+    for(int i = 1; i <= steps; ++i)
+    {
+        const float angle = (float)i / (float)steps * 360.0f;
+        Vector3 v(radius * Cos(angle), 0, radius * Sin(angle));
+        Vector3 c = orientation * v + center;
+        AddTriangle(p,c,tip, uintColor, depthTest);
+        p = c;
+    }
+
+}
+
+void DebugRenderer::AddWireCone(const Vector3& center, const Vector3& normal, float radius, const Color& color, int steps, bool depthTest)
+{
+    Quaternion orientation;
+    orientation.FromRotationTo(Vector3::UP, normal.Normalized());
+    Vector3 p = orientation * Vector3(radius, 0, 0) + center;
+    unsigned uintColor = color.ToUInt();
+
+    Vector3 tip = center+normal*radius;
+
+    for(int i = 1; i <= steps; ++i)
+    {
+        const float angle = (float)i / (float)steps * 360.0f;
+        Vector3 v(radius * Cos(angle), 0, radius * Sin(angle));
+        Vector3 c = orientation * v + center;
+        //AddLine(p, c, uintColor, depthTest);
+
+        //AddTriangle(p,c,tip, uintColor, depthTest);
+        AddLine(p, c, uintColor, depthTest);
+        AddLine(c, tip, uintColor, depthTest);
+        //AddLine(tip, p, uintColor, depthTest);
+
+        p = c;
+    }
+
+    //p = center + normal * (radius / 4.0f);
+    //AddLine(center, p, uintColor, depthTest);
+}
+
 
 void DebugRenderer::AddCross(const Vector3& center,  const Quaternion& orientation, float size, const Color& color, bool depthTest)
 {
