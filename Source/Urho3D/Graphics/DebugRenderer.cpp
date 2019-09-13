@@ -37,6 +37,11 @@
 
 #include "../DebugNew.h"
 
+#include "../UI/UI.h"
+#include "../UI/Text.h"
+#include "../Graphics/Viewport.h"
+#include "../Graphics/Renderer.h"
+
 namespace Urho3D
 {
 
@@ -329,6 +334,47 @@ void DebugRenderer::AddSphereSector(const Sphere& sphere, const Quaternion& rota
                 sphere.center_ + rotation * sphere.GetLocalPoint(j * 360.0f / numCircleSegments, halfAngle),
                 uintColor);
         }
+    }
+}
+
+void DebugRenderer::AddLabel(const Vector3& position, const String& name, const String& text, bool dynamicText){
+    auto* ui=GetSubsystem<UI>();
+
+    Text* oldLabel = (Text*)ui->GetRoot()->GetChild(name,false);
+    if(oldLabel)
+    {
+        auto* vp = GetSubsystem<Renderer>()->GetViewport(0);
+        oldLabel->SetPosition(vp->WorldToScreenPoint(position));
+        if(!dynamicText)
+            return;
+        else
+            oldLabel->SetText(text);
+    }else{
+        Text* t = new Text(context_);
+        t->SetText(text);
+        t->SetName(name);
+        t->SetStyleAuto();
+        auto* vp = GetSubsystem<Renderer>()->GetViewport(0);
+        t->SetPosition(vp->WorldToScreenPoint(position));
+        ui->GetRoot()->AddChild(t);
+    }
+
+}
+
+void DebugRenderer::AddArc(const Sphere& sphere, const Vector3& from, const Vector3& to, const Color& color, int steps, bool depthTest)
+{
+    Vector3 prevPoint, nextPoint;
+
+    float omega = Acos(from.DotProduct(to));
+    float d = Sin(omega);
+
+    for(float t=0; t<=1.0f; t+=1.0f / (float)steps){
+        prevPoint = nextPoint;
+        float s0 = Sin((1.0f - t) * omega);
+        float s1 = Sin(t * omega);
+        nextPoint = (from * s0 + to * s1) / d;
+        if(t>0)
+            AddLine(prevPoint*sphere.radius_+sphere.center_, nextPoint*sphere.radius_+sphere.center_, color, depthTest);
     }
 }
 

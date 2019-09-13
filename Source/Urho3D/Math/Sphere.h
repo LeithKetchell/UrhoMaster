@@ -61,7 +61,9 @@ public:
     /// Construct from a bounding box.
     explicit Sphere(const BoundingBox& box) noexcept
     {
-        Define(box);
+        //Define(box);
+        center_ = (box.max_ + box.min_) / 2.0f;             /// Compute centroid
+        radius_ = (box.max_ - box.min_).Length() / 2.0f;    /// Compute diagonal half-distance
     }
 
     /// Construct from a frustum.

@@ -131,6 +131,7 @@ public:
     /// Add a sphere sector.
     void AddSphereSector(const Sphere& sphere, const Quaternion& rotation, float angle,
         bool drawLines, const Color& color, bool depthTest = true);
+    void AddArc(const Sphere& sphere, const Vector3& from, const Vector3& to, const Color& color, int steps=16, bool depthTest=true);
     /// Add a cylinder
     void AddCylinder(const Vector3& position, float radius, float height, const Color& color, bool depthTest = true);
     /// Add a skeleton.
@@ -147,6 +148,8 @@ public:
     void AddCross(const Vector3& center,  const Quaternion& orient, float size, const Color& color, bool depthTest = true);
     /// Add a quad on the XZ plane.
     void AddQuad(const Vector3& center, float width, float height, const Color& color, bool depthTest = true);
+
+    void AddLabel(const Vector3& position, const String& name, const String& text, bool dynamicText=true);
 
     /// Update vertex buffer and render all debug lines. The viewport and rendertarget should be set before.
     void Render();
