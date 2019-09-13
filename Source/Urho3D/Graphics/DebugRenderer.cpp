@@ -433,7 +433,7 @@ void DebugRenderer::AddSolidArrow(const Vector3& position, const Vector3& normal
     orientation.FromRotationTo(Vector3::UP, normal.Normalized());
 
     Vector3 pos = orientation * Vector3(0,height,0) + position;
-    AddSolidCone(     pos, Vector3::UP, radius,              color, steps,       depthTest);
+    AddSolidCone(     pos, normal, radius,              color, steps,       depthTest);
     AddSolidCylinder( position, normal, radius/2.0f, height, color, steps, true, depthTest);
 
 
