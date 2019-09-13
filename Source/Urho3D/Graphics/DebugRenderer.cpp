@@ -402,27 +402,33 @@ void DebugRenderer::AddSolidCylinder(const Vector3& position, const Vector3& nor
 
     Quaternion orientation;
     orientation.FromRotationTo(Vector3::UP, normal.Normalized());
-    Vector3 p = orientation * Vector3(radius, 0, 0) + position;
+
+
     unsigned uintColor = color.ToUInt();
 
     Vector3 heightVec(0,height,0);
+
+    Vector3 p  = orientation * Vector3(radius, 0, 0) + position;
+    Vector3 p2 = orientation * Vector3(radius, height, 0) + position;
 
     for(int i = 1; i <= steps; ++i)
     {
         const float angle = (float)i / (float)steps * 360.0f;
         Vector3 v(radius * Cos(angle), 0, radius * Sin(angle));
         Vector3 c = orientation * v + position;
+        Vector3 c2= orientation * (v+heightVec) + position;
 
-        AddTriangle(p,c,c+heightVec,color, depthTest);
-        AddTriangle(p,c+heightVec,p+heightVec, color, depthTest);
+        AddTriangle(p,c,c2,color, depthTest);
+        AddTriangle(p,c2,p2, color, depthTest);
 
         if(drawCaps)
         {
             AddTriangle(p, c, position, color, depthTest);
-            AddTriangle(p+heightVec, c+heightVec, position+heightVec, color, depthTest);
+            AddTriangle(p2, c2, orientation * heightVec + position, color, depthTest);
         } 
 
         p = c;
+        p2 = c2;
     }
 
 }
